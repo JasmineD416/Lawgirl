@@ -1,0 +1,25 @@
+{
+  // Law Girl on Cloudflare Workers. See docs/DEVELOPER_HANDOFF.md → Deployment.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "law-girl",
+  "main": "./build/worker.ts",
+  "compatibility_date": "2026-05-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "law-girl-db",
+      // Replace with the id printed by `wrangler d1 create law-girl-db`.
+      "database_id": "00000000-0000-4000-8000-000000000000",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      // Private bucket for paid e-book files and uploaded covers. Never make it public.
+      "bucket_name": "law-girl-files"
+    }
+  ],
+  "observability": { "enabled": true }
+}

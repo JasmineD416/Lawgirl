@@ -1,0 +1,1 @@
+export default function NotFound(){return <main className="inner"><header className="page-intro"><p className="eyebrow">Law Girl</p><h1>A different chapter.</h1><p className="lead">We couldn’t find that page. There’s more to explore from here.</p><a className="button plum" href="/">Return to Law Girl</a></header></main>}

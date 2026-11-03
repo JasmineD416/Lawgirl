@@ -1,0 +1,2 @@
+'use client';
+export default function ErrorPage({reset}:{reset:()=>void}){return <main className="inner"><header className="page-intro"><p className="eyebrow">Law Girl</p><h1>A brief interruption.</h1><p className="lead">This page could not load. Please try again.</p><button className="button plum" onClick={()=>reset()}>Try again</button> <a href="/" className="text-link">Return home</a></header></main>}

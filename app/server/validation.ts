@@ -1,0 +1,14 @@
+import {z} from 'zod';
+const text=(n=300)=>z.string().trim().max(n);
+const url=z.union([z.literal(''),z.string().url().refine(x=>x.startsWith('https://'),'Use an HTTPS URL.')]);
+const color=z.string().regex(/^#[0-9a-f]{6}$/i);
+const article=z.object({title:text(300).min(1),date:text(60),type:text(60),topic:text(80),source:text(150),url:url.default(''),slug:z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(100).optional(),body:z.array(text(8000)).max(100).optional()}).refine(x=>x.url||(x.body?.length&&x.slug),'Provide a source URL, or a body and slug.');
+const schemas:Record<string,z.ZodTypeAny>={
+article,media:article,blog:article,lowdown:article,
+book:z.object({id:z.string().regex(/^[a-z0-9-]{1,60}$/),series:z.enum(['Law Girl Series','Private Lender Series']),title:text(250).min(1),kicker:text(150).default(''),description:text(2500),color,retailer:url,cover:z.string().regex(/^(\/api\/asset\?key=covers%2F|\/covers\/)[a-z0-9.-]+$/i).optional().or(z.literal('')),price:z.string().regex(/^price_[A-Za-z0-9]+$/).optional().or(z.literal('')),file:z.string().regex(/^ebooks\/[a-z0-9.-]+\.(pdf|epub)$/i).optional().or(z.literal(''))}),
+product:z.object({name:text(60).regex(/^[A-Za-z]+$/),category:text(120),description:text(1200),color,url}),
+episode:z.object({title:text(300).min(1),url,audio:url.optional().nullable(),date:text(80),description:text(2000).optional()}),
+settings:z.object({lowdownUrl:url,contactEmail:z.string().email().or(z.literal('')),mailingAddress:text(500)}),
+course:z.object({id:z.string().regex(/^[a-z0-9-]{1,60}$/),slug:z.string().regex(/^[a-z0-9-]{1,60}$/),title:text(250).min(1),summary:text(2000),revision:z.number().int().min(1).max(10000),access:z.enum(['free','paid']).default('free'),enrollment:z.enum(['open','waitlist']).default('open'),price:z.string().regex(/^price_[A-Za-z0-9]+$/,'Use a Stripe Price ID such as price_123.').optional().or(z.literal('')),priceLabel:text(60).default(''),lessons:z.array(z.object({title:text(200).min(1),intro:text(1000),time:text(50),paragraphs:z.array(text(8000)).min(1).max(30),question:text(1000).min(1),options:z.array(text(500).min(1)).min(2).max(6),correctIndex:z.number().int().min(0).max(5)}).refine(x=>x.correctIndex<x.options.length,'Answer must match an option.')).min(1).max(50)}).refine(x=>x.access!=='paid'||x.enrollment!=='open'||!!x.price,'Add the Stripe Price ID before opening enrolment for a paid course.')};
+export function validateDocument(kind:string,payload:unknown){const schema=schemas[kind];if(!schema)throw new Error('Unknown content type.');const r=schema.safeParse(payload);if(!r.success)throw new Error(r.error.issues.map(x=>x.path.join('.')+': '+x.message).slice(0,5).join('; '));return r.data}
+export const campaignSchema=z.object({id:z.string().uuid().optional(),title:text(200).min(1),subject:text(200).min(1),body:z.array(text(8000).min(1)).min(1).max(100),expectedVersion:z.number().int().min(0).default(0)});
