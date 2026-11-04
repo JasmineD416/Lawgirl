@@ -1,11 +1,11 @@
-import {response,database,checkOrigin,readJson,rateLimit,settings} from '../../../server/core';
+import {response,database,checkOrigin,readJson,rateLimit,settings,clientIp} from '../../../server/core';
 import {requestUser,createSession,endSession,endAllSessions,hashPassword,verifyPassword,passwordProblem,normalizeEmail,validEmail,issueToken,consumeToken,safeReturnPath} from '../../../server/auth';
 import {mailReady,sendMail} from '../../../server/newsletter';
 export const dynamic='force-dynamic';
 
 const withCookie=(data:any,cookie:string,status=200)=>{const r=response(data,status);r.headers.append('Set-Cookie',cookie);return r};
 const origin=()=>String(settings().SITE_URL||'').replace(/\/$/,'');
-const clientKey=(request:Request)=>request.headers.get('cf-connecting-ip')||'anonymous';
+const clientKey=clientIp;
 const nameOk=(v:unknown)=>typeof v==='string'&&v.trim().length>=1&&v.trim().length<=60;
 
 async function sendVerification(user:{id:string,email:string,first_name?:string,firstName?:string}){if(!mailReady())return false;const token=await issueToken(user.id,'verify',48*3600);await sendMail(user.email,'Confirm your Law Girl account',['Hello '+(user.firstName||user.first_name)+',','Please confirm the email address for your Law Girl account.',origin()+'/verify-email?token='+encodeURIComponent(token),'This link expires in 48 hours. If you did not create an account, you can ignore this message.'],'verify/'+token);return true}

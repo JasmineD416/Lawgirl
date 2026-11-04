@@ -1,4 +1,4 @@
-import {env} from 'cloudflare:workers';
+import {env} from '../../../lib/server-env';
 import {requireUser} from '../../server/session';
 import {notFound} from 'next/navigation';
 import Print from './print';

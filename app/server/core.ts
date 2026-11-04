@@ -1,9 +1,11 @@
-import {env} from 'cloudflare:workers';
+import {env,type Database} from '../../lib/server-env';
 export const settings=()=>env as unknown as Record<string,any>;
-export const database=()=>{if(!settings().DB)throw new Error('Database is unavailable.');return settings().DB as D1Database};
+export const database=()=>{if(!settings().DB)throw new Error('Database is unavailable.');return settings().DB as Database};
 export const response=(data:any,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 // Signed-in account id recorded for audit entries, set after the owner check.
 export const actors=new WeakMap<Request,string>();
+// The app listens on localhost behind Caddy, which replaces any client-sent X-Forwarded-For.
+export function clientIp(request:Request){return request.headers.get('x-forwarded-for')?.split(',')[0].trim()||'anonymous'}
 export function checkOrigin(request:Request){return request.headers.get('origin')===new URL(request.url).origin}
 export async function readJson(request:Request,limit=262144){if(Number(request.headers.get('content-length')||0)>limit)throw new Error('Request too large.');const bytes=await readBytes(request,limit);try{return JSON.parse(new TextDecoder().decode(bytes))}catch{throw new Error('Invalid JSON.')}}
 export async function readBytes(request:Request,limit:number){const reader=request.body?.getReader();if(!reader)return new Uint8Array();const chunks:Uint8Array[]=[];let size=0;while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>limit){await reader.cancel();throw new Error('Request too large.')}chunks.push(value)}const bytes=new Uint8Array(size);let at=0;for(const chunk of chunks){bytes.set(chunk,at);at+=chunk.length}return bytes}

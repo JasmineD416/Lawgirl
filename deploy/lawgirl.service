@@ -1,0 +1,21 @@
+[Unit]
+Description=Law Girl website
+After=network.target
+
+[Service]
+User=lawgirl
+Group=lawgirl
+EnvironmentFile=/etc/lawgirl/lawgirl.env
+WorkingDirectory=/srv/lawgirl/current
+ExecStart=/usr/bin/node --disable-warning=ExperimentalWarning server.js
+Restart=always
+RestartSec=3
+# Hardening: the app can write only to its data folder.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/lawgirl
+
+[Install]
+WantedBy=multi-user.target

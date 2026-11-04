@@ -1,6 +1,6 @@
 # Law Girl — Education & Media
 
-Website source and operating tools for Jasmine Daya. This is a full-stack Vinext/React application that runs as a Cloudflare Worker on your own Cloudflare account, with D1 (database) and private R2 (file) storage. It is not a WordPress theme or a static mockup, and it has no dependency on any AI platform or third-party sign-in.
+Website source and operating tools for Jasmine Daya. This is a full-stack Vinext/React application that runs as a Node.js server on Akamai Cloud, with a SQLite database and private file storage on the server. It is not a WordPress theme or a static mockup, and it has no dependency on any AI platform or third-party sign-in.
 
 ## What is included
 
@@ -24,8 +24,8 @@ Use Node.js 24 LTS and pnpm (`corepack pnpm`). Dependencies are locked in `pnpm-
 ```sh
 corepack enable
 pnpm install --frozen-lockfile
-cp .env.example .dev.vars   # fill in local values
-pnpm run db:migrate:local
+cp .env.example .env.local  # fill in local values
+pnpm run db:migrate          # creates .data/law-girl.sqlite
 pnpm run dev                # http://localhost:5173
 ```
 
@@ -39,12 +39,8 @@ pnpm run build
 
 ## Deploy
 
-One-time Cloudflare setup (create the D1 database and R2 bucket, set secrets, attach the domain) is in `docs/DEVELOPER_HANDOFF.md` → Deployment. After that:
-
-```sh
-pnpm run deploy
-```
+Merging a pull request into `main` publishes the site automatically through GitHub Actions. Server setup and the team workflow are in `docs/DEPLOYMENT.md`.
 
 ## Developer guide
 
-Read `docs/DEVELOPER_HANDOFF.md`, `docs/CONTENT_MAP.md`, `docs/ACCEPTANCE_CHECKLIST.md` and `docs/API.md`. The complete unconfigured variable names are in `.env.example`; set production values with `wrangler secret put`. No live keys are included.
+Read `docs/DEVELOPER_HANDOFF.md`, `docs/CONTENT_MAP.md`, `docs/ACCEPTANCE_CHECKLIST.md` and `docs/API.md`. The complete unconfigured variable names are in `.env.example`; production values live only on the server in `/etc/lawgirl/lawgirl.env`. No live keys are included.

@@ -1,0 +1,52 @@
+# Publishes the site to the Akamai Cloud server whenever main changes
+# (i.e. when a pull request is merged), or on demand from the Actions tab.
+# Needs these secrets in GitHub → Settings → Environments → production:
+#   DEPLOY_HOST          server IP address or hostname
+#   DEPLOY_SSH_KEY       private key whose public half is in /home/deploy/.ssh/authorized_keys
+#   DEPLOY_KNOWN_HOSTS   output of `ssh-keyscan <server>` (proves it is really our server)
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm run typecheck
+      - run: pnpm run build
+
+      - name: Package release
+        run: |
+          mkdir -p release/scripts
+          cp -r dist/standalone/. release/
+          cp -r drizzle release/
+          cp scripts/migrate.mjs release/scripts/
+          tar -czf "lawgirl-${GITHUB_SHA::12}.tar.gz" -C release .
+
+      - name: Upload and install on server
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          NAME="lawgirl-${GITHUB_SHA::12}.tar.gz"
+          scp "$NAME" "deploy@$DEPLOY_HOST:uploads/$NAME"
+          ssh "deploy@$DEPLOY_HOST" "sudo /usr/local/bin/lawgirl-release /home/deploy/uploads/$NAME"

@@ -1,4 +1,4 @@
-import {env} from 'cloudflare:workers';
+import {env} from '../../../lib/server-env';
 import {lessons} from '../../data';
 import {getBookConfig,getCatalog} from '../../server/catalog';
 import {getCourseConfig,hasCourseAccess,courseProduct} from '../../server/courses';

@@ -2,7 +2,7 @@
 
 ## Scope and architecture
 
-The application is Vinext/React, deployed as a Cloudflare Worker on Jasmine’s own Cloudflare account. D1 contains accounts, sessions, content, consent, progress, enrolments and delivery records. R2 contains private paid book files and uploaded cover images. Stripe hosts payment entry. Resend is the implemented email adapter. No emails have been sent by the development tests and no live payments have been taken.
+The application is Vinext/React, run as a Node.js server on an Akamai Cloud (Linode) instance behind Caddy, which provides HTTPS. A SQLite database (`DATABASE_PATH`) contains accounts, sessions, content, consent, progress, enrolments and delivery records. A private folder on the server (`FILES_DIR`) contains paid book files and uploaded cover images; it is never served directly. Stripe hosts payment entry. Resend is the implemented email adapter. No emails have been sent by the development tests and no live payments have been taken.
 
 The app has no dependency on any AI platform or third-party sign-in. Students create their own Law Girl account. It cannot be copied into shared PHP/WordPress hosting without a platform port.
 
@@ -19,7 +19,8 @@ The app has no dependency on any AI platform or third-party sign-in. Students cr
 | `app/api/account/` | Sign-up, sign-in, sign-out, email confirmation, password reset, profile |
 | `app/account-pages.tsx` | Account pages (/signin, /signup, /account, /forgot-password, /reset-password, /verify-email) |
 | `app/server/courses.ts` | Law Girl’s Law School enrolment and access checks |
-| `wrangler.jsonc`, `build/worker.ts` | Cloudflare Worker, D1 and R2 configuration |
+| `lib/server-env.ts` | Server runtime: settings, SQLite database and private file storage |
+| `deploy/`, `.github/workflows/` | Server setup, release, backup and newsletter scripts; GitHub checks and automatic deployment |
 | `app/server/validation.ts` | Content and campaign schemas |
 | `app/server/newsletter.ts` | Confirmation, delivery adapter, dispatch and suppression |
 | `app/admin/` | Owner Studio |
@@ -34,11 +35,11 @@ The app has no dependency on any AI platform or third-party sign-in. Students cr
 
 ## Local setup
 
-Node.js 24 LTS and pnpm (via `corepack pnpm`) are recommended. Run `pnpm install --frozen-lockfile`, copy `.env.example` to `.dev.vars` and fill in local values, then run `pnpm run db:migrate:local` and `pnpm run dev` (http://localhost:5173). Create an account at /signup. To use Owner Studio locally, set `OWNER_EMAIL` in `.dev.vars` to that account’s email and confirm it (with Resend configured, or by setting `email_verified_at` in the local D1 database).
+Node.js 24 LTS and pnpm (via `corepack pnpm`) are recommended. Run `pnpm install --frozen-lockfile`, copy `.env.example` to `.env.local` and fill in local values, then run `pnpm run db:migrate` and `pnpm run dev` (http://localhost:5173). Create an account at /signup. To use Owner Studio locally, set `OWNER_EMAIL` in `.env.local` to that account’s email and confirm it (with Resend configured, or by setting `email_verified_at` in `.data/law-girl.sqlite`).
 
 ## Accounts and sign-in
 
-Students sign up with first name, last name, email and a password of at least 10 characters. Passwords are stored as PBKDF2-SHA256 (100,000 iterations, 16-byte random salt). A sign-in creates a random 256-bit session token; only its SHA-256 hash is stored in D1. The browser receives it in the `lg_session` cookie (HttpOnly, Secure, SameSite=Lax, 30 days). Every state-changing request also requires a same-origin Origin header. Sign-in is rate limited per email and per IP.
+Students sign up with first name, last name, email and a password of at least 10 characters. Passwords are stored as PBKDF2-SHA256 (100,000 iterations, 16-byte random salt). A sign-in creates a random 256-bit session token; only its SHA-256 hash is stored in the database. The browser receives it in the `lg_session` cookie (HttpOnly, Secure, SameSite=Lax, 30 days). Every state-changing request also requires a same-origin Origin header. Sign-in is rate limited per email and per IP.
 
 Email confirmation links (48 hours) and password reset links (one hour, single use, earlier links cancelled) are sent through Resend; only token hashes are stored. Resetting or changing a password signs out every other session. Forgot-password responses do not reveal whether an account exists.
 
@@ -61,7 +62,7 @@ The owner is the signed-in account whose **confirmed** email equals `OWNER_EMAIL
 | `RATE_LIMIT_SECRET` | High-entropy salt for pseudonymous request limit keys. |
 | `PUBLIC_INDEXING` | Keep false until public launch; true enables crawlable sitemap declaration. |
 
-Set secrets with `wrangler secret put NAME` (or the Cloudflare dashboard → Workers → law-girl → Settings → Variables). Do not put real values in Git, page content, import files or browser bundles. The production owner email is set for Jasmine's verified owning account; source archives do not contain its value.
+Set these in `/etc/lawgirl/lawgirl.env` on the server, then `sudo systemctl restart lawgirl`. Do not put real values in Git, page content, import files or browser bundles. The production owner email is set for Jasmine's verified owning account; source archives do not contain its value.
 
 ## Content lifecycle
 
@@ -73,11 +74,11 @@ Book fields `price` and `file` are server-only in the public catalog. Upload a P
 
 ## Payments and delivery
 
-Checkout resolves the product, price and R2 file on the server. It records the chosen edition in `checkout_intents`. Fulfillment retrieves the Checkout Session from Stripe, verifies its paid/complete status, source, identity and price, and records the original book edition on the order. Verified signed webhooks and the authenticated return page invoke the same idempotent fulfillment path. Library downloads verify ownership and recheck payment/refund state. Book price/file changes do not move an existing purchaser to a different edition.
+Checkout resolves the product, price and private file on the server. It records the chosen edition in `checkout_intents`. Fulfillment retrieves the Checkout Session from Stripe, verifies its paid/complete status, source, identity and price, and records the original book edition on the order. Verified signed webhooks and the authenticated return page invoke the same idempotent fulfillment path. Library downloads verify ownership and recheck payment/refund state. Book price/file changes do not move an existing purchaser to a different edition.
 
 Register `checkout.session.completed` and `checkout.session.async_payment_succeeded` (plus `charge.refunded` and `charge.dispute.created` for Law School access revocation) on `/api/stripe/webhook`. This version explicitly requests card checkout. Stripe controls supported wallets on its hosted checkout. Turn on Stripe receipts in the account if desired. Review digital sales tax configuration with the account owner before launch; no tax jurisdiction or exemption is assumed in source.
 
-Stripe and Resend webhooks reach the public Worker URL directly; both are signature-verified. Do not disable verification.
+Stripe and Resend webhooks reach the public site URL directly; both are signature-verified. Do not disable verification.
 
 ## Monthly newsletter operations
 
@@ -85,7 +86,7 @@ Subscriptions require explicit consent and an emailed confirmation; a pending ad
 
 Owner Studio creates a draft issue. Send a preview to the owner's verified email, save it and explicitly approve a send date. Only approved/due issues enter dispatch; arbitrary draft text cannot be sent by the scheduler. Delivery records isolate recipients, recheck consent before sending, claim short leases and use stable provider idempotency keys. Rate-limit/provider failures leave work queued. Uncertain delivery beyond the provider's idempotency window stops for manual reconciliation; do not reset it blindly. Cancellation stops remaining dispatch but cannot recall provider-accepted messages.
 
-The dispatcher processes at most 10 recipients per invocation. For automated delivery, configure a scheduler (for example a Cloudflare Cron Trigger or an external cron service) to POST `/api/newsletter/dispatch` every few minutes with `Authorization: Bearer <NEWSLETTER_DISPATCH_SECRET>`. Keep the secret in the scheduler’s secret store, never in a public schedule prompt or source. No unattended schedule has been activated in this handoff. Until configured, the owner can process approved/due batches from Owner Studio.
+The dispatcher processes at most 10 recipients per invocation. On the server, a cron job (`deploy/newsletter-dispatch.sh`, every 5 minutes) POSTs `/api/newsletter/dispatch` with `Authorization: Bearer <NEWSLETTER_DISPATCH_SECRET>`, reading the secret from `/etc/lawgirl/lawgirl.env`. The owner can also process approved/due batches from Owner Studio.
 
 Monthly publishing remains editorial: prepare and approve one new issue each month. The system does not generate or send an unreviewed legal newsletter on its own.
 
@@ -112,16 +113,9 @@ Publish a course with a stable ID/slug, revision and lessons. Each lesson has co
 
 ## Deployment, backup and recovery
 
-One-time Cloudflare setup (from this folder, signed in with `npx wrangler login`):
+Server setup, the GitHub release flow and the team workflow are in `docs/DEPLOYMENT.md`. In short: a pull request runs the checks; merging it into `main` builds the site in GitHub Actions, uploads it to the Akamai server, backs up the database, applies pending migrations from `drizzle/`, switches to the new release and restarts. If the new release does not respond, the server switches back to the previous code automatically.
 
-1. `npx wrangler d1 create law-girl-db` and paste the printed `database_id` into `wrangler.jsonc`.
-2. `npx wrangler r2 bucket create law-girl-files` (keep it private).
-3. Set each production variable above with `npx wrangler secret put NAME`.
-4. `pnpm run deploy` builds, applies pending D1 migrations from `drizzle/` and publishes the Worker.
-5. Attach the custom domain in Cloudflare (Workers → law-girl → Settings → Domains & Routes), then set `SITE_URL` to it.
-6. In Stripe, add the webhook endpoint `https://<domain>/api/stripe/webhook` with the four events listed under Payments and save its signing secret as `STRIPE_WEBHOOK_SECRET`.
-
-After that, every release is `pnpm test && pnpm run typecheck && pnpm run deploy`. Applied migrations are append-only. Source rollback (`wrangler rollback`) does not roll the database schema back; inspect compatibility first. Content exports omit subscriber/purchase secrets; subscriber CSV is separate and owner-only. Enable D1 Time Travel and set R2 retention according to the owner’s requirements.
+Applied migrations are append-only. Switching back to earlier code does not roll the database schema back; inspect compatibility first. The database is copied nightly and before every release to `/var/lib/lawgirl/backups` (newest 30 kept); enable Akamai's Backups service for whole-disk snapshots, which also cover uploaded book files. Content exports omit subscriber/purchase secrets; subscriber CSV is separate and owner-only.
 
 ## Remaining launch inputs
 

@@ -53,3 +53,6 @@ next-env.d.ts
 # Safe example configuration and generated compiler cache
 !/.env.example
 *.tsbuildinfo
+
+# Local SQLite database and private files (production keeps these under /var/lib/lawgirl).
+/.data/

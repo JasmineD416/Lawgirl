@@ -1,0 +1,9 @@
+# Caddy serves HTTPS (certificates are automatic) and forwards requests to the app.
+{$DOMAIN} {
+	encode gzip zstd
+	request_body {
+		max_size 25MB
+	}
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	reverse_proxy 127.0.0.1:3000
+}
