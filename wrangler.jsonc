@@ -17,5 +17,11 @@
   // Cloudflare dashboard, run `wrangler r2 bucket create law-girl-files`, then add:
   // "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "law-girl-files" }],
   // Keep that bucket private.
+  "workers_dev": true,
+  "preview_urls": false,
+  "routes": [
+    { "pattern": "lawgirl.ca", "custom_domain": true },
+    { "pattern": "www.lawgirl.ca", "custom_domain": true }
+  ],
   "observability": { "enabled": true }
 }
