@@ -9,17 +9,13 @@
     {
       "binding": "DB",
       "database_name": "law-girl-db",
-      // Replace with the id printed by `wrangler d1 create law-girl-db`.
-      "database_id": "00000000-0000-4000-8000-000000000000",
+      "database_id": "03b8ceb7-5276-4411-9154-206de3a3ffa4",
       "migrations_dir": "drizzle"
     }
   ],
-  "r2_buckets": [
-    {
-      "binding": "BUCKET",
-      // Private bucket for paid e-book files and uploaded covers. Never make it public.
-      "bucket_name": "law-girl-files"
-    }
-  ],
+  // File storage for paid e-books and uploaded covers. To turn it on: enable R2 in the
+  // Cloudflare dashboard, run `wrangler r2 bucket create law-girl-files`, then add:
+  // "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "law-girl-files" }],
+  // Keep that bucket private.
   "observability": { "enabled": true }
 }
