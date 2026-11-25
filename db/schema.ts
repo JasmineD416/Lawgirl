@@ -13,3 +13,7 @@ export const courseAwards = sqliteTable('course_awards', { id:text('id').primary
 export const subscriptionRequests = sqliteTable('subscription_requests', { email:text('email').primaryKey(),tokenHash:text('token_hash').notNull().unique(),expires:integer('expires').notNull(),requestedAt:text('requested_at').notNull(),confirmedAt:text('confirmed_at') });
 
 export const checkoutIntents = sqliteTable('checkout_intents', { sessionId:text('session_id').primaryKey(),userId:text('user_id').notNull(),product:text('product').notNull(),fileKey:text('file_key').notNull(),priceId:text('price_id').notNull(),title:text('title').notNull(),createdAt:text('created_at').notNull() });
+
+export const users = sqliteTable('users', { id:text('id').primaryKey(),email:text('email').notNull().unique(),firstName:text('first_name').notNull(),lastName:text('last_name').notNull(),passwordHash:text('password_hash').notNull(),emailVerifiedAt:text('email_verified_at'),createdAt:text('created_at').notNull(),updatedAt:text('updated_at').notNull(),role:text('role').notNull().default('student'),addedBy:text('added_by') });
+export const sessions = sqliteTable('sessions', { idHash:text('id_hash').primaryKey(),userId:text('user_id').notNull(),createdAt:text('created_at').notNull(),expiresAt:integer('expires_at').notNull() });
+export const authTokens = sqliteTable('auth_tokens', { tokenHash:text('token_hash').primaryKey(),userId:text('user_id').notNull(),purpose:text('purpose').notNull(),expiresAt:integer('expires_at').notNull(),usedAt:text('used_at') });

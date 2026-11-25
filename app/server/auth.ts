@@ -1,7 +1,7 @@
 import {database,settings,hash} from './core';
 
 // Law Girl student accounts: email + password, server-side sessions in an HttpOnly cookie.
-export type AccountUser={id:string,email:string,firstName:string,lastName:string,verified:boolean};
+export type AccountUser={id:string,email:string,firstName:string,lastName:string,verified:boolean,role:string};
 export const SESSION_COOKIE='lg_session';
 const SESSION_DAYS=30;
 const PBKDF2_ITERATIONS=100000; // Cloudflare Workers' maximum for PBKDF2
@@ -29,12 +29,14 @@ export async function createSession(request:Request,userId:string){const token=r
 export async function endSession(request:Request){const token=readCookie(request.headers.get('cookie'),SESSION_COOKIE);if(token)await database().prepare('DELETE FROM sessions WHERE id_hash=?').bind(await hash(token)).run();return cookie('',0,isSecure(request))}
 export async function endAllSessions(userId:string){await database().prepare('DELETE FROM sessions WHERE user_id=?').bind(userId).run()}
 
-async function userForToken(token:string|null):Promise<AccountUser|null>{if(!token||token.length>100)return null;const row=await database().prepare('SELECT u.id,u.email,u.first_name,u.last_name,u.email_verified_at FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.id_hash=? AND s.expires_at>?').bind(await hash(token),now()).first<any>();return row?{id:row.id,email:row.email,firstName:row.first_name,lastName:row.last_name,verified:!!row.email_verified_at}:null}
+async function userForToken(token:string|null):Promise<AccountUser|null>{if(!token||token.length>100)return null;const row=await database().prepare('SELECT u.id,u.email,u.first_name,u.last_name,u.email_verified_at,u.role FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.id_hash=? AND s.expires_at>?').bind(await hash(token),now()).first<any>();return row?{id:row.id,email:row.email,firstName:row.first_name,lastName:row.last_name,verified:!!row.email_verified_at,role:row.role||'student'}:null}
 export function userFromCookieHeader(header:string|null){return userForToken(readCookie(header,SESSION_COOKIE))}
 export function requestUser(request:Request){return userFromCookieHeader(request.headers.get('cookie'))}
 
 // The owner is the signed-in account whose verified email matches OWNER_EMAIL.
 export function isOwnerUser(user:AccountUser|null){const owner=String(settings().OWNER_EMAIL||'').toLowerCase();return !!user&&user.verified&&!!owner&&user.email.toLowerCase()===owner}
+// Owner Studio access: the owner, plus confirmed accounts the owner has made Studio editors.
+export function isStudioUser(user:AccountUser|null){return isOwnerUser(user)||(!!user&&user.verified&&user.role==='admin')}
 
 export async function issueToken(userId:string,purpose:'verify'|'reset',seconds:number){const token=randomToken();if(purpose==='reset')await database().prepare("UPDATE auth_tokens SET used_at=? WHERE user_id=? AND purpose='reset' AND used_at IS NULL").bind(new Date().toISOString(),userId).run();await database().prepare('INSERT INTO auth_tokens (token_hash,user_id,purpose,expires_at,used_at) VALUES (?,?,?,?,NULL)').bind(await hash(token),userId,purpose,now()+seconds).run();return token}
 export async function consumeToken(token:unknown,purpose:'verify'|'reset'){if(typeof token!=='string'||token.length<20||token.length>100)return null;const row=await database().prepare('UPDATE auth_tokens SET used_at=? WHERE token_hash=? AND purpose=? AND used_at IS NULL AND expires_at>? RETURNING user_id').bind(new Date().toISOString(),await hash(token),purpose,now()).first<{user_id:string}>();return row?.user_id||null}
