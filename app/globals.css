@@ -244,6 +244,12 @@ a.tile:hover,button.tile:hover{border-color:var(--pink);transform:translateY(-3p
 .about{display:grid;grid-template-columns:.85fr 1.15fr;gap:56px;align-items:start}
 .about h2{font-family:var(--display);font-weight:500;font-size:clamp(1.9rem,4vw,2.6rem);line-height:1.08;margin:0 0 1rem}
 .about p{color:var(--ink-soft);margin:0 0 1rem;max-width:62ch}
+.about-list{margin:0 0 1.2rem;padding-left:1.2rem;color:var(--ink-soft);max-width:62ch}
+.about-list li{margin:0 0 .55rem}
+.about-list a{color:var(--ink);text-decoration:none}
+.about-list a:hover b{color:var(--pink)}
+.about .about-motto{font-family:var(--display);font-size:1.25rem;color:var(--ink);margin-top:1.4rem}
+.about .about-sign{color:var(--ink);line-height:1.5}
 .quals{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding-block:18px;margin:24px 0;display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .quals div{font-size:.95rem;color:var(--ink-soft)}
 .quals b{display:block;color:var(--ink);font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
