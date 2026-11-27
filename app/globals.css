@@ -404,3 +404,10 @@ footer .logo small{color:var(--band-mute)}
 .studio select,.studio input:not([type=file]),.studio textarea{border-radius:10px}
 
 .studio-users{display:grid;gap:22px}.studio-users form{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;align-items:end}.studio-users form .button{justify-self:start}.studio-users td .text-link{margin-right:14px}.studio-users #user-link{width:100%;margin:10px 0}
+
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+/* Law Girl brand banner */
+.brand-banner{display:block;width:100%;height:auto;max-width:540px;border-radius:14px;background:#fff;box-shadow:0 10px 30px -18px rgba(42,10,30,.35)}
+.brand-band{display:flex;justify-content:center;margin-bottom:40px}
+.about-intro{display:flex;justify-content:center}
+.foot-banner{max-width:300px;border-radius:10px}
